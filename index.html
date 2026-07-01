@@ -353,6 +353,39 @@
                 right: 10px !important;
                 box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
             }
+			
+			/* 🌤️ 手機版天氣表單收折與書籤樣式 */
+			#weather-box {
+				/* 讓展開與收回的滑動過程變得非常平滑順暢 */
+				transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1) !important;
+			}
+			
+			@media (max-width: 768px) {
+				/* 當加上 .is-collapsed 類別時，整塊往左推，只留 35px 在螢幕內當作「書籤標籤」 */
+				#weather-box.is-collapsed {
+					transform: translateX(calc(-100% + 35px)) !important;
+					cursor: pointer;
+					overflow: hidden !important; /* 防止裡面的大表格撐開破圖 */
+					box-shadow: 2px 2px 8px rgba(0,0,0,0.2) !important;
+				}
+				
+				/* 當收合時，把原本雜亂的天氣文字與表格隱藏，畫面才會乾淨 */
+				#weather-box.is-collapsed > * {
+					opacity: 0 !important;
+					pointer-events: none;
+				}
+				
+				/* 🌟 核心視覺：利用偽元素，在露出的 35px 小書籤上貼上一顆可愛的天氣圖標 */
+				#weather-box.is-collapsed::after {
+					content: "🌤️";
+					position: absolute;
+					right: 8px;
+					top: 50%;
+					transform: translateY(-50%);
+					font-size: 1.2rem;
+					display: block !important;
+				}
+			}
         }
 		
     </style>
@@ -992,7 +1025,36 @@
 			groupModal.addEventListener('click', function(e) {
 				if (e.target === groupModal) groupModal.style.display = 'none';
 			});
+		
+		// 🌟 新增：手機版即時天氣 1 秒自動收折與書籤點擊邏輯
+        const weatherBox = document.getElementById('weather-box'); // 👈 修正：精確抓取 weather-box
 
+        if (weatherBox) {
+            // 1. ⏱️ 核心功能：網頁載入 1 秒（1000毫秒）後，如果是手機版就自動綁上收折類別
+            setTimeout(() => {
+                if (window.innerWidth <= 768) {
+                    weatherBox.classList.add('is-collapsed');
+                }
+            }, 1000);
+
+            // 2. 👆 點擊事件：如果目前是「收折狀態」，點擊該書籤就立刻「吐出來」展開
+            weatherBox.addEventListener('click', function(e) {
+                if (window.innerWidth <= 768) {
+                    if (weatherBox.classList.contains('is-collapsed')) {
+                        weatherBox.classList.remove('is-collapsed');
+                        e.stopPropagation(); // 防止點擊事件穿透到地圖上
+                    }
+                }
+            });
+
+            // 3. 🗺️ 貼心優化：當天氣展開後，使用者如果點擊「地圖任意空白處」，天氣就會貼心地再次自動縮回去
+            map.on('click', function() {
+                if (window.innerWidth <= 768) {
+                    weatherBox.classList.add('is-collapsed');
+                }
+            });
+        }
+		
         // 初始化啟動
         renderMapMarkers();
         fetchTaitungWeather();
