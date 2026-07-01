@@ -493,7 +493,27 @@
         // 🌟 這個網址不含 API Key，可以安全地放進 GitHub / 公開部署。
         // 請將下方網址換成你自己部署完成後拿到的 Apps Script 網頁應用程式網址。
         const WEATHER_PROXY_URL = "https://script.google.com/macros/s/AKfycbwEqPaYExjU1xpbUteMQiDPis4YvFO62kll_7bl20tLvPtHFFfN7IXd5T7PCvEqyHxm1Q/exec";
-
+		
+		// 🌟 新增：將電話號碼字串轉換為適合手機點擊撥打的超連結 HTML
+        function makePhoneLinks(phoneStr) {
+            if (!phoneStr) return '--';
+            // 支援以斜線 / 分隔的多組號碼
+            return phoneStr.split('/').map(part => {
+                const trimmed = part.trim();
+                
+                // 1. 將分機的 # 替換為逗號「,」，智慧手機偵測到逗號會在撥通後「自動延遲輸入分機」
+                let dialNum = trimmed.replace(/-/g, '').replace(/#/g, ',');
+                
+                // 2. 貼心優化：如果是台東在地 6 碼市話（如 326642），手機撥打必須補上區碼 089 才能成功
+                if (dialNum.split(',')[0].length === 6 && !dialNum.startsWith('0')) {
+                    dialNum = '089' + dialNum;
+                }
+                
+                // 回傳帶有 tel: 協定的超連結，並加上美化樣式
+                return `<a href="tel:${dialNum}" style="color: var(--primary-blue); text-decoration: underline; font-weight: bold;">${trimmed}</a>`;
+            }).join(' / ');
+        }
+		
         // === 2. 安全定義 TWD97 座標系統 ===
         if (typeof proj4 !== 'undefined') {
             proj4.defs("EPSG:3826", "+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
@@ -694,7 +714,7 @@
 					<b>🎪展場：</b> ${d.name}<br>
 					<b>🏢負責局處：</b> ${d.unit}<br>
 					<b>👤聯絡人：</b> ${d.contact}<br>
-					<b>📞電話：</b> ${d.phone}<br>
+					<b>📞電話：</b> ${makePhoneLinks(d.phone)}<br>
 					<hr style="margin: 8px 0; border: none; border-top: 1px dashed #ccc;">
                     <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; font-size: 0.9rem;">
                         <div>💧飲水機: <b>${water}</b></div>
@@ -1007,7 +1027,7 @@
 						<td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #333; padding-left: 15px;">${item.group}</td>
 						<td style="padding: 10px; border-bottom: 1px solid #eee; color: #555;">${item.unit}</td>
 						<td style="padding: 10px; border-bottom: 1px solid #eee; color: #555;">${item.contact}</td>
-						<td style="padding: 10px; border-bottom: 1px solid #eee; color: var(--primary-blue); font-weight: 500;">${item.phone}</td>
+						<td style="padding: 10px; border-bottom: 1px solid #eee; color: var(--primary-blue); font-weight: 500;">${makePhoneLinks(item.phone)}</td>
 					`;
 					tbody.appendChild(row);
 					itemIndex++; // 只有真正的資料列才累加，確保交錯底色完美不破圖
