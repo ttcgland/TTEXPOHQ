@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 Taitng EXPO</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        /* --- 核心變數設定：海洋藍色系 --- */
+        :root {
+            --primary-blue: #0077b6;     /* 主色調：海洋藍 */
+            --dark-blue: #03045e;        /* 深海藍 */
+            --light-blue: #0096c7;       /* 亮藍 */
+            --bg-blue: #caf0f8;          /* 淺藍底 */
+            --white: #ffffff;
+            --shadow: rgba(0, 0, 0, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft JhengHei", sans-serif;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #111;
+        }
+
+        /* --- 頂部 Banner 與 膠囊按鈕區 --- */
+        .header-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 15px;
+            border-radius: 30px;
+            box-shadow: 0 4px 10px var(--shadow);
+            border: 2px solid var(--primary-blue);
+        }
+
+        .logo-banner {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+            color: var(--dark-blue);
+            font-size: 1.1rem;
+        }
+
+        .capsule-toggle {
+            display: flex;
+            background: var(--bg-blue);
+            border-radius: 20px;
+            padding: 3px;
+            border: 1px solid var(--light-blue);
+        }
+
+        .capsule-btn {
+            padding: 6px 18px;
+            border: none;
+            background: transparent;
+            border-radius: 18px;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--primary-blue);
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .capsule-btn.active {
+            background: var(--primary-blue);
+            color: var(--white);
+        }
+
+		/* 確保新按鈕能完美繼承滑鼠懸停變色效果 */
+        #btn-working-group:hover {
+            background: var(--primary-blue);
+            color: var(--white);
+            transform: translateY(-2px);
+        }
+
+        /* --- 地圖主容器 --- */
+        #map {
+            width: 100%;
+            height: 100%;
+            background-color: #f4f3f0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* --- Windy 動態流體地圖容器 --- */
+        #windy-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
+            display: none;
+            border: none;
+        }
+
+        /* --- 監視器牆面主容器 --- */
+        #video-wall {
+            width: 100%;
+            height: 100%;
+            background: #121212;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 500;
+            display: none;
+            /* 🌟 修改：強制一行最多 3 個，超過自動換行 */
+            grid-template-columns: repeat(3, 1fr);
+            grid-auto-rows: min-content;
+            gap: 20px;
+            padding: 80px 20px 20px 20px;
+            overflow-y: auto; /* 僅保留整個電視牆頁面的垂直滾動 */
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.8);
+        }
+
+        /* --- 單個監視器外框 --- */
+        .video-box {
+            background: #000000;
+            border: 2px solid #333;
+            border-radius: 12px;
+            width: 100%;
+            /* 🌟 修改：固定高度在 300px，並強制隱藏內部所有捲軸 */
+            height: 300px; 
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+        }
+
+        /* 🌟 新增：讓 iframe 在電視牆裡也乖乖等比例縮放且置中，拔除捲軸 */
+        .video-box iframe {
+            width: 780px !important;
+            height: 560px !important;
+            border: none;
+            position: absolute;
+            top: 0px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.55);
+            transform-origin: top center;
+            overflow: hidden;
+        }
+
+        .video-title {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            z-index: 10; /* 確保標題在縮放的影像上方 */
+            border-top: 1px solid #222;
+        }
+
+        /* --- 右上角：圖層切換 --- */
+        .custom-layer-control {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: var(--white);
+            padding: 10px 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px var(--shadow);
+            border-top: 4px solid var(--primary-blue);
+            transition: all 0.3s ease;
+            max-width: 80px;
+            max-height: 45px;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .custom-layer-control:hover {
+            max-width: 300px;
+            max-height: 520px;
+            overflow-y: auto;
+        }
+
+        .layer-title {
+            font-weight: bold;
+            color: var(--dark-blue);
+            cursor: pointer;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .layer-content {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .custom-layer-control:hover .layer-content {
+            opacity: 1;
+        }
+
+        .layer-group {
+            border-top: 1px solid #ddd;
+            padding-top: 5px;
+            margin-top: 5px;
+        }
+
+        .layer-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            padding: 2px 0;
+        }
+
+        /* --- 左下角：即時天氣資訊 --- */
+        .weather-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px var(--shadow);
+            border-left: 5px solid var(--light-blue);
+            width: 260px;
+        }
+
+        .weather-title {
+            font-weight: bold;
+            color: var(--dark-blue);
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+        }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .weather-item {
+            background: var(--bg-blue);
+            padding: 6px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--dark-blue);
+        }
+
+        .weather-val {
+            font-weight: bold;
+            font-size: 1rem;
+            color: var(--primary-blue);
+            margin-top: 2px;
+        }
+
+        /* --- 右下角：比例尺與滑鼠座標 --- */
+        .info-panel {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 6px 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px var(--shadow);
+            font-size: 0.8rem;
+            color: #333;
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .coord-toggle-btn {
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            margin-left: 5px;
+        }
+
+        /* --- RWD 手機版微調 --- */
+        @media (max-width: 600px) {
+            .header-container { width: calc(100% - 20px); justify-content: space-between; }
+            .weather-panel { width: 160px; font-size: 0.8rem; }
+            .weather-grid { grid-template-columns: 1fr; }
+            .info-panel { max-width: 180px; }
+            #video-wall { padding-top: 90px; }
+        }
+		
+		/* 📱 完美應對手機模式的 RWD 響應式優化 (修正膠囊壓扁變形版) */
+        @media (max-width: 768px) {
+            
+            /* 1. 頂部主外框：強制排成一列、啟動水平滑動 */
+            .header-container {
+                max-width: calc(100% - 20px) !important;
+                display: flex !important;
+                flex-wrap: nowrap !important;   /* 絕不換行 */
+                align-items: center !important; /* 垂直居中對齊 */
+                overflow-x: auto !important;    /* 啟動左右滑動 */
+                padding: 6px 10px !important;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* 🌟 核心關鍵：強制讓 header 內的所有元件（包含標題、地圖切換開關、所有按鈕）絕對不准被擠壓、文字不准換行 */
+            .header-container > * {
+                flex-shrink: 0 !important;      /* 絕不縮小壓扁 */
+                white-space: nowrap !important; /* 文字絕不變直條狀 */
+            }
+            
+            /* 隱藏微胖的瀏覽器原生水平捲軸，保持畫面極簡 */
+            .header-container::-webkit-scrollbar {
+                display: none;
+            }
+            
+            /* 稍微縮小手機版膠囊按鈕的間距與襯墊 */
+            .capsule-btn {
+                padding: 6px 12px !important;
+                font-size: 0.85rem !important;
+                margin-right: 8px !important;
+            }
+
+            /* 2. 將圖層控制盒挪移到右下角 */
+            .custom-layer-control {
+                top: auto !important;
+                bottom: 140px !important;
+                right: 10px !important;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
+            }
+        }
+		
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <div class="logo-banner" id="banner-zone">
+            🌊 2026 Taitng EXPO
+        </div>
+        <div class="capsule-toggle">
+            <button class="capsule-btn active" id="btn-mode-map" onclick="switchMode('map')">地圖</button>
+            <button class="capsule-btn" id="btn-mode-video" onclick="switchMode('video')">即時影像</button>
+        </div>
+		<div class="capsule-btn" id="btn-working-group">👥 工作小組</div>
+    </div>
+
+    <div class="custom-layer-control" id="layer-control-box">
+        <div class="layer-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <span>🗺️ 圖層</span>
+            <span style="font-size: 0.75rem; font-weight: normal; color: #888; white-space: nowrap;">
+                <span id="lyr-all-on" style="color: var(--primary-blue); cursor: pointer; padding: 2px 4px;">全開</span>/<span id="lyr-all-off" style="color: var(--primary-blue); cursor: pointer; padding: 2px 4px;">全關</span>
+            </span>
+        </div>
+        <div class="layer-content">
+            <label class="layer-item" style="cursor: pointer;"><input type="checkbox" id="lyr-exhibit" checked> 🎪 展場</label>
+            <label class="layer-item" style="cursor: pointer;"><input type="checkbox" id="lyr-bus" checked> 🚌 接駁車站牌</label>
+            <label class="layer-item" style="cursor: pointer;"><input type="checkbox" id="lyr-toilet" checked> 🚹 公廁</label>
+            <label class="layer-item" style="cursor: pointer;"><input type="checkbox" id="lyr-water" checked> 💧 飲水機</label>
+            <label class="layer-item" style="cursor: pointer;"><input type="checkbox" id="lyr-aed" checked> ❤️ AED</label>
+            <label class="layer-item" style="cursor: pointer;"><input type="checkbox" id="lyr-livevideo" checked> 📹 即時影像點</label>
+            
+            <div class="layer-group">
+                <div class="layer-title" style="font-size:0.85rem; margin:5px 0 2px 0;">🗺️ 底圖選擇</div>
+                <label class="layer-item" style="cursor: pointer;"><input type="radio" name="basemap" value="emaps" checked> 通用版電子地圖</label>
+                <label class="layer-item" style="cursor: pointer;"><input type="radio" name="basemap" value="sat"> 國家衛星影像</label>
+                <label class="layer-item" style="cursor: pointer;"><input type="radio" name="basemap" value="hybrid"> 混合標記地圖</label>
+                <label class="layer-item" style="cursor: pointer;"><input type="radio" name="basemap" value="windy-wind"> Windy 動態風速 🌀</label>
+                <label class="layer-item" style="cursor: pointer;"><input type="radio" name="basemap" value="windy-temp"> Windy 動態溫度 🌡️</label>
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <iframe id="windy-container"></iframe>
+
+    <div id="video-wall"></div>
+
+    <div class="weather-panel" id="weather-box">
+        <div class="weather-title">🌦️ 台東氣象站 即時觀測</div>
+        <div class="weather-grid">
+            <div class="weather-item">🌡️ 溫度 <span class="weather-val" id="wt-temp">--°C</span></div>
+            <div class="weather-item">💧 濕度 <span class="weather-val" id="wt-hum">--%</span></div>
+            <div class="weather-item">💨 風速 <span class="weather-val" id="wt-wind">-- m/s</span></div>
+            <div class="weather-item">🌧️ 雨量 <span class="weather-val" id="wt-rain">-- mm</span></div>
+            <div class="weather-item">☀️ 紫外線 <span class="weather-val" id="wt-uvi">--</span></div>
+			<!-- 新增：顯示最後更新時間 -->
+			<div id="wt-update-time" style="font-size: 0.75rem; color: #666; margin-top: 10px; text-align: center;">
+				更新中...
+			</div>
+        </div>
+    </div>
+
+    <div class="info-panel" id="info-box">
+        <div id="custom-scale">概略比例尺: 計算中...</div>
+        <div>
+            <span id="coord-label">WGS84:</span> 
+            <span id="coord-value">請移動滑鼠</span>
+            <button class="coord-toggle-btn" onclick="toggleCoordSystem()">切換 TWD97</button>
+        </div>
+    </div>
+	
+	<div id="group-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center;">
+        <div style="background: white; width: 90%; max-width: 600px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); overflow: hidden; border-top: 6px solid var(--primary-blue);">
+            <div style="padding: 15px 20px; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee;">
+                <h3 style="margin: 0; color: var(--dark-blue); font-size: 1.1rem;">👥 工作小組聯絡名單</h3>
+                <span id="close-group-modal" style="font-size: 1.5rem; color: #aaa; cursor: pointer; font-weight: bold;">&times;</span>
+            </div>
+            <div style="padding: 20px; max-height: 400px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="background: var(--bg-blue); color: var(--dark-blue);">
+                            <th style="padding: 10px; border-bottom: 2px solid #ddd;">工作小組</th>
+                            <th style="padding: 10px; border-bottom: 2px solid #ddd;">負責局處</th>
+                            <th style="padding: 10px; border-bottom: 2px solid #ddd;">聯絡人</th>
+                            <th style="padding: 10px; border-bottom: 2px solid #ddd;">聯絡電話</th>
+                        </tr>
+                    </thead>
+                    <tbody id="group-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+
+    <script>
+        // ==========================================
+        // 1. 天氣資料代理設定區（不含任何金鑰）
+        // ==========================================
+        // 🌟 金鑰已移至 Google Sheet，由 Google Apps Script 在伺服器端讀取並呼叫 CWA API。
+        // 🌟 這個網址不含 API Key，可以安全地放進 GitHub / 公開部署。
+        // 請將下方網址換成你自己部署完成後拿到的 Apps Script 網頁應用程式網址。
+        const WEATHER_PROXY_URL = "https://script.google.com/macros/s/AKfycbwEqPaYExjU1xpbUteMQiDPis4YvFO62kll_7bl20tLvPtHFFfN7IXd5T7PCvEqyHxm1Q/exec";
+
+        // === 2. 安全定義 TWD97 座標系統 ===
+        if (typeof proj4 !== 'undefined') {
+            proj4.defs("EPSG:3826", "+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
+        }
+
+        // === 3. Leaflet 地圖與官方底圖初始化 ===
+        const waveHouseLatLng = [22.75075, 121.14579]; 
+        const map = L.map('map', { zoomControl: false, attributionControl: false }).setView(waveHouseLatLng, 17);
+
+        const emapLayer = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}').addTo(map);
+        const satLayer = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}');
+        const hybridLayer = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/PHOTO_MIX/default/GoogleMapsCompatible/{z}/{y}/{x}');
+
+        // === 4. 專題圖層數據與標記 ===
+		const poiData = {
+			// 🎪 展場：每個物件包含 name, lat, lng, unit, contact, phone
+			exhibit: [
+				{ name: "緊急應變中心(救護站+輔具租借)", lat: 22.75086, lng: 121.14494, unit: "各單位", contact: "輪值人員", phone: "326-642 / 334-502", icon: "🏛️", color: "#EA0000", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "A1-活的學校", lat: 22.75233, lng: 121.14492, unit: "文化處", contact: "潘以家", phone: "089-320-378#502", icon: "A1", color: "#0507a8", 飲水機:"❌" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "A2-未來超市", lat: 22.75394, lng: 121.14597, unit: "農業處", contact: "趙淯存", phone: "089-346-781", icon: "A2", color: "#0507a8", 飲水機:"" ,廁所:"", AED:"", 哺乳室:"" },
+				{ name: "A3-記憶提取所", lat: 22.75292, lng: 121.14677, unit: "國計處", contact: "林宛靚、蔡彥安", phone: "089-343-582", icon: "A3", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
+				{ name: "A4-微光流金戲院", lat: 22.75327, lng: 121.14683, unit: "國計處", contact: "陳又瑞", phone: "089-343-582", icon: "A4", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
+				{ name: "A5-夢想東升Walk in熱氣球", lat: 22.75115, lng: 121.14816, unit: "觀光處", contact: "林穎潔", phone: "089-343-879", icon: "A5", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
+				{ name: "A6-未來人孵化器", lat: 22.74787, lng: 121.14444, unit: "教育處", contact: "侯乃菁", phone: "089-322-002#1307", icon: "A6", color: "#0507a8", 飲水機:"✅" ,廁所:"✅", AED:"❌", 哺乳室:"✅" },
+				{ name: "A7-台東線", lat: 22.75192, lng: 121.14709, unit: "行政處", contact: "彭淳芳", phone: "089-342-890", icon: "A7", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
+				{ name: "A8-台東線(夜間光雕)", lat: 22.75177, lng: 121.14728, unit: "文化處", contact: "任蘭欣", phone: "089-320-378#505", icon: "A8", color: "#0507a8", 飲水機:"" ,廁所:"", AED:"", 哺乳室:"" },
+				{ name: "A9-烤什麼東東", lat: 22.75305, lng: 121.14438, unit: "社會處", contact: "林維倫", phone: "089-342-492#270", icon: "A9", color: "#0507a8", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "B1-就藝會", lat: 22.76252, lng: 121.14288, unit: "文化處", contact: "巴干 美吉", phone: "089-342-405#511", icon: "B1", color: "#47ad42", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "C1-泛太平洋國際駐村交流展", lat: 22.76471, lng: 121.15003, unit: "文化處", contact: "李承翰", phone: "089-342-405#511", icon: "C1", color: "#295325", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "C2-台東聲音藝術節", lat: 22.76432, lng: 121.14981, unit: "文化處", contact: "金芝", phone: "089-342-405#511", icon: "C2", color: "#295325", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
+				{ name: "C3-台東工藝展", lat: 22.76416, lng: 121.15011, unit: "文化處", contact: "王怡雯", phone: "089-320-378#506", icon: "C3", color: "#295325", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
+				{ name: "D1-東日晒桑", lat: 22.75875, lng: 121.15184, unit: "文化處", contact: "鍾雅文", phone: "089-320-378#204", icon: "D1", color: "#009cef", 飲水機:"❌" ,廁所:"✅", AED:"❌", 哺乳室:"❌" },
+				{ name: "D2-藝起來我家", lat: 22.75908, lng: 121.15177, unit: "文化處", contact: "王蕙筠", phone: "089-350-382", icon: "D2", color: "#009cef", 飲水機:"❌" ,廁所:"✅", AED:"❌", 哺乳室:"❌" },
+				{ name: "E1-凹!你是有的", lat: 22.74838, lng: 121.15276, unit: "原民處", contact: "林江琪", phone: "089-320-1121#202", icon: "E1", color: "#00e5ef", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "E2-永續島進行事", lat: 22.74726, lng: 121.15424, unit: "環保局", contact: "許筑媛", phone: "089-221-9991#502", icon: "E2", color: "#00e5ef", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "F1-潮界帶", lat: 22.75526, lng: 121.15134, unit: "民政處", contact: "陳怡妘", phone: "089-352-674", icon: "F1", color: "#9d6c6c", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "G1-共編台東", lat: 22.75629, lng: 121.14532, unit: "文化處", contact: "王嬿晴", phone: "089-320-378#513", icon: "G1", color: "#ff8c00", 飲水機:"✅" ,廁所:"✅", AED:"", 哺乳室:"" },
+				{ name: "G2-台東藝穗節回顧展", lat: 22.75638, lng: 121.14473, unit: "文化處", contact: "賴韋丞", phone: "089-350-381", icon: "G2", color: "#ff8c00", 飲水機:"❌" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "G3-台東探索館", lat: 22.75677, lng: 121.14539, unit: "文化處", contact: "劉俊璋", phone: "089-320-378#316", icon: "G3", color: "#ff8c00", 飲水機:"" ,廁所:"", AED:"", 哺乳室:"" },
+				{ name: "H1-紅土之上棒球特展", lat: 22.78914, lng: 121.12848, unit: "教育處", contact: "張誌顯", phone: "089-322-002#1607", icon: "H1", color: "#794513", 飲水機:"❌" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "H2-台東慢經濟指南-島島生活提案所", lat: 22.76233, lng: 121.15712, unit: "文化處", contact: "潘以家", phone: "089-320-378#502", icon: "H2", color: "#794513", 飲水機:"" ,廁所:"", AED:"", 哺乳室:"" }
+			],
+
+			// 🚌 接駁車站牌：每個物件包含 name, lat, lng
+			bus: [
+				{ name: "1-台東轉運站", lat: 22.75157, lng: 121.14769 },
+				{ name: "2-全民運動館", lat: 22.74816, lng: 121.14401 },
+				{ name: "3-台東縣立體育館", lat: 22.75284, lng: 121.14463 },
+				{ name: "4-就藝會", lat: 22.76230, lng: 121.14279 },
+				{ name: "5-台東美術館", lat: 22.76492, lng: 121.14907 },
+				{ name: "6-北町", lat: 22.76002, lng: 121.15297 },
+				{ name: "7-原住民文化創意產業聚落", lat: 22.74828, lng: 121.15369 },
+				{ name: "8-台東生活美學館", lat: 22.75516, lng: 121.15098 },
+				{ name: "9-台東縣立圖書館", lat: 22.75619, lng: 121.14577 },
+				{ name: "外2-台東棒球村", lat: 22.78876, lng: 121.12839 },
+				{ name: "外3-史前館", lat: 22.75942, lng: 121.09172 }
+			],
+
+			// 🚹 公廁：每個物件包含 name, lat, lng
+			toilet: [
+				{ name: "A1-活的學校", lat: 22.75233, lng: 121.14492 },
+				{ name: "A6-未來人孵化器", lat: 22.74787, lng: 121.14444 },
+				{ name: "A9-烤什麼東東", lat: 22.75305, lng: 121.14438 },
+				{ name: "B1-就藝會", lat: 22.76252, lng: 121.14288 },
+				{ name: "C1-泛太平洋國際駐村交流展", lat: 22.76471, lng: 121.15003 },
+				{ name: "D1-東日晒桑", lat: 22.75875, lng: 121.15184 },
+				{ name: "D2-藝起來我家", lat: 22.75908, lng: 121.15177 },
+				{ name: "E1-凹!你是有的", lat: 22.74838, lng: 121.15276 },
+				{ name: "E2-永續島進行事", lat: 22.74726, lng: 121.15424 },
+				{ name: "F1-潮界帶", lat: 22.75526, lng: 121.15134 },
+				{ name: "G1-共編台東", lat: 22.75629, lng: 121.14532 },
+				{ name: "G2-台東藝穗節回顧展", lat: 22.75638, lng: 121.14473 },
+				{ name: "H1-紅土之上棒球特展", lat: 22.78914, lng: 121.12848},
+				{ name: "H2-台東慢經濟指南-島島生活提案所", lat: 22.76233, lng: 121.15712},
+				{ name: "台東縣體育場", lat: 22.75154, lng: 121.14516},
+				{ name: "社會處", lat: 22.75207, lng: 121.14414},
+				{ name: "警察局台東分局", lat: 22.74935, lng: 121.14438},
+				{ name: "機關車庫旁", lat: 22.75307, lng: 121.14571},
+				{ name: "波浪屋", lat: 22.75300, lng: 121.14726},
+				{ name: "客運總站", lat: 22.75122, lng: 121.14798},
+				{ name: "美術館", lat: 22.76411, lng: 121.15030}
+			],
+
+			// 💧 飲水機：每個物件包含 name, lat, lng
+			water: [
+				{ name: "A6-未來人孵化器", lat: 22.74787, lng: 121.14444 },
+				{ name: "A9-烤什麼東東", lat: 22.75305, lng: 121.14438 },
+				{ name: "B1-就藝會", lat: 22.76252, lng: 121.14288 },
+				{ name: "C1-泛太平洋國際駐村交流展", lat: 22.76471, lng: 121.15003 },
+				{ name: "E1-凹!你是有的", lat: 22.74838, lng: 121.15276 },
+				{ name: "E2-永續島進行事", lat: 22.74726, lng: 121.15424 },
+				{ name: "F1-潮界帶", lat: 22.75526, lng: 121.15134 },
+				{ name: "G1-共編台東", lat: 22.75629, lng: 121.14532 },
+				{ name: "台東縣體育場", lat: 22.75086, lng: 121.14494},
+				{ name: "社會處", lat: 22.75207, lng: 121.14414},
+				{ name: "警察局台東分局", lat: 22.74935, lng: 121.14438}			
+			],
+
+			// ❤️ AED：每個物件包含 name, lat, lng
+			aed: [
+				{ name: "A1-活的學校", lat: 22.75233, lng: 121.14492 },
+				{ name: "A9-烤什麼東東", lat: 22.75305, lng: 121.14438 },
+				{ name: "B1-就藝會", lat: 22.76252, lng: 121.14288 },
+				{ name: "C1-泛太平洋國際駐村交流展", lat: 22.76471, lng: 121.15003 },
+				{ name: "E1-凹!你是有的", lat: 22.74838, lng: 121.15276 },
+				{ name: "E2-永續島進行事", lat: 22.74726, lng: 121.15424 },
+				{ name: "F1-潮界帶", lat: 22.75526, lng: 121.15134 },
+				{ name: "G2-台東藝穗節回顧展", lat: 22.75638, lng: 121.14473 }
+			],
+
+			// 📹 即時影像點：每個物件包含 name, lat, lng, url
+			livevideo: [
+				{ name: "中山x正氣路口", lat: 22.75424, lng: 121.14957, url: "https://trafficvideo.ttcpb.gov.tw/1d0eb09c/" }, 
+				{ name: "中華x新生路口", lat: 22.75109, lng: 121.14998, url: "https://trafficvideo.ttcpb.gov.tw/39eab823" },
+				{ name: "更生x傳廣路口", lat: 22.76134, lng: 121.14391, url: "https://trafficvideo.ttcpb.gov.tw/9dce6ff1" }
+			],
+			
+			// 🌟 新增：工作小組聯絡資訊資料庫
+			workingGroup: [
+				{ group: "專案辦公室", unit: "縣長室", contact: "黃珊珊/游明華", phone: "089-322-338" },
+				{ group: "專案管理組", unit: "文化處", contact: "廖蕭龍笙/潘以家", phone: "089-320-378#502" },
+				{ group: "緊急應變中心", unit: "人事處", contact: "黃于玲/吳玟佳", phone: "089-321-009" },
+				{ group: "行政庶務組", unit: "行政處", contact: "王識殷/彭凱琳", phone: "089-322-716" },
+				{ group: "行政宣傳暨安全組", unit: "國計處(新傳)", contact: "李駿/許乃中", phone: "089-322-390" },
+				{ group: "行政宣傳暨安全組", unit: "國計處(資發)", contact: "莊承錦/許筑珺", phone: "089-340-785" },
+				{ group: "衛生醫療組", unit: "衛生局(衛)", contact: "黃信祺/周鈺晴", phone: "089-331-171#351" },
+				{ group: "衛生醫療組", unit: "教育處(教)", contact: "林邦遠/張郁琦", phone: "089-339-441" },
+				{ group: "教育推廣組", unit: "教育處", contact: "汪劭樺/侯乃菁", phone: "089-343-017" },
+				{ group: "社福推廣組", unit: "社會處(社)", contact: "林維倫", phone: "089-350-731#270" },
+				{ group: "社福推廣組", unit: "原民處(原)", contact: "楊幸錦/董紀伶", phone: "089-330-837" },
+				{ group: "工讀生管理組", unit: "地政處", contact: "李如婷/施欣秀", phone: "089-350-313" },
+				{ group: "產業推廣組", unit: "財經處", contact: "劉倩如/王昱棨", phone: "089-321-180" },
+				{ group: "觀光推廣組", unit: "觀光處", contact: "黃仁川/王詠儀", phone: "089-350-252" },
+				{ group: "交通接駁組", unit: "交通處", contact: "劉奇朋/廖育忻", phone: "089-356-397" },
+				{ group: "建設工程組", unit: "建設處(建)", contact: "陳承龍/鄭如意", phone: "089-360-541" },
+				{ group: "建設工程組", unit: "交通處(交)", contact: "洪渝甯/翁千玹", phone: "089-342-955" },
+				{ group: "警衛交通組", unit: "警察局", contact: "温綮騫/曾志偉", phone: "089-322-319" },
+				{ group: "消防安全組", unit: "消防局", contact: "簡肇甫/楊博閎", phone: "089-322-112#1340" },
+				{ group: "環境維護組", unit: "環保局", contact: "黃毅文/林威志", phone: "089-237-234" },
+				
+				// 🌟 核心改動：插入一個空行標記
+				{ type: "spacer" },
+				
+				// 🌟 核心改動：插入「限定活動」大標題與其內部資料
+				{ type: "section", title: "✨ 限定活動" },
+				{ group: "I1-東日晒桑-台東老城區散策計畫", unit: "文化處", contact: "鍾雅文", phone: "089-320-378#204" },
+				{ group: "I2-台東藝術節-東博加映", unit: "文化處", contact: "林君育", phone: "089-320-378#600" },
+				{ group: "I3-台東藝穗節馬戲特區", unit: "文化處", contact: "林君育", phone: "089-320-378#600" },
+				{ group: "I4-台東博覽會踩街嘉年華", unit: "文化處", contact: "林家榆", phone: "089-320-378#600" },
+				{ group: "I5-台東慢經濟指南-島島生活提案所", unit: "文化處", contact: "潘以家", phone: "089-320-378#502" },
+				{ group: "I6-東博限定便當", unit: "財經處", contact: "劉倩如/蔡邑辰", phone: "089-321-180" },
+				{ group: "I7-2026台東博覽會開幕音樂會", unit: "財經處", contact: "劉倩如/林彣蒨", phone: "089-321-180" },
+				
+				// 🌟 核心改動：插入一個空行標記
+				{ type: "spacer" },
+				
+				// 🌟 核心改動：插入「其他計畫」大標題與其內部資料
+				{ type: "section", title: "📂 其他計畫" },
+				{ group: "台東博覽會專案管理", unit: "文化處", contact: "潘以家", phone: "089-320-378#502" },
+				{ group: "台東博覽會暑期工讀生管理", unit: "地政處", contact: "施欣秀", phone: "089-350-313" },
+				{ group: "台東博覽會資訊中心", unit: "觀光處", contact: "王詠儀", phone: "089-350-252" },
+				{ group: "交通接駁規劃(車貼、接駁)", unit: "交通處", contact: "廖育忻", phone: "089-356-397" },
+				{ group: "轉角再造村里補助計畫", unit: "環保局", contact: "汪暐棟", phone: "089-221-9991#205" },
+			]
+		};
+
+		function createCuteIcon(text, bgColor) {
+			return L.divIcon({
+				// 💡 這裡加上了 color: white; 與 font-weight: bold; 確保文字是白色的
+				html: `<div style="background-color: ${bgColor}; color: white; font-weight: bold; width: 34px; height: 34px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 16px;">${text}</div>`,
+				className: 'custom-cute-icon', 
+				iconSize: [34, 34], 
+				iconAnchor: [17, 17], 
+				popupAnchor: [0, -15]
+			});
+		}
+
+        const markerGroups = {
+            exhibit: L.layerGroup(), bus: L.layerGroup(), toilet: L.layerGroup(),
+            water: L.layerGroup(), aed: L.layerGroup(), livevideo: L.layerGroup()
+        };
+
+        function renderMapMarkers() {
+            poiData.exhibit.forEach(d => {
+				// 💡 動態讀取資料：如果資料裡有設定 icon 就用設定的，沒有的話就用 "🎪" 當預設值
+				const myIcon = d.icon || "🎪";
+				const myColor = d.color || "#ffb703";
+				const water = d.飲水機 || "➖";
+                const toilet = d.廁所 || "➖";
+                const aed = d.AED || "➖";
+                const room = d.哺乳室 || "➖";
+
+				L.marker([d.lat, d.lng], {
+					icon: createCuteIcon(myIcon, myColor), // 👈 改成帶入變數
+					zIndexOffset: 1000 // 👈 核心關鍵：強制將圖層順序拉到最頂層
+				})
+				 .bindPopup(`
+					<b>🎪展場：</b> ${d.name}<br>
+					<b>🏢負責局處：</b> ${d.unit}<br>
+					<b>👤聯絡人：</b> ${d.contact}<br>
+					<b>📞電話：</b> ${d.phone}<br>
+					<hr style="margin: 8px 0; border: none; border-top: 1px dashed #ccc;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; font-size: 0.9rem;">
+                        <div>💧飲水機: <b>${water}</b></div>
+                        <div>🚾廁所: <b>${toilet}</b></div>
+                        <div>❤️ＡＥＤ: <b>${aed}</b></div>
+                        <div>🍼哺乳室: <b>${room}</b></div>
+                    </div>
+					`).addTo(markerGroups.exhibit);
+			});
+            poiData.bus.forEach(d => {
+                L.marker([d.lat, d.lng], {icon: createCuteIcon("🚌", "#219ebc")})
+                 .bindPopup(`<b>🚌：</b> ${d.name}`).addTo(markerGroups.bus);
+            });
+            poiData.toilet.forEach(d => {
+				L.marker([d.lat, d.lng], {icon: createCuteIcon("🚹", "#ffffff")})
+				 .bindPopup(`<b>🚹 公廁:</b> ${d.name}`)
+				 .addTo(markerGroups.toilet);
+			});
+            poiData.water.forEach(d => {
+                L.marker([d.lat, d.lng], {icon: createCuteIcon("💧", "#ff7b00")})
+                 .bindPopup(`<b>💧：</b> ${d.name}`).addTo(markerGroups.water);
+            });
+            poiData.aed.forEach(d => {
+                L.marker([d.lat, d.lng], {icon: createCuteIcon("❤️", "#2bc48a")})
+                 .bindPopup(`<b>❤️ AED：</b> ${d.name}`).addTo(markerGroups.aed);
+            });
+			poiData.livevideo.forEach(d => {
+                // 核心邏輯：將 iframe 的縮放基準點移到左上角 (0 0)，並將 left 調整為微負值
+                // 這樣可以把 iframe 右半邊自帶的無用黑區移到框外，讓真正的影像等比例放大並置中
+                let linkHtml = d.url ? `
+                    <br>
+                    <div style="width: 400px; height: 300px; overflow: hidden; position: relative; margin-top: 5px; border-radius: 4px; background: #000;">
+                        <iframe src="${d.url}" 
+                                style="width: 780px; height: 560px; border: none; position: absolute; top: 0px; left: 0px; transform: scale(0.62); transform-origin: 0 0;" 
+                                scrolling="no">
+                        </iframe>
+                    </div>
+                ` : '<br><span style="color:gray;">(暫無影像連結)</span>';
+                
+                L.marker([d.lat, d.lng], {icon: createCuteIcon("📹", "#9b5de5")})
+                 .bindPopup(`<b>📹：</b> ${d.name}${linkHtml}`, { maxWidth: 500 })
+                 .addTo(markerGroups.livevideo);
+            });
+            Object.values(markerGroups).forEach(g => g.addTo(map));
+        }
+
+        // === 5. 模式切換 ===
+        function switchMode(mode) {
+            const btnMap = document.getElementById('btn-mode-map');
+            const btnVideo = document.getElementById('btn-mode-video');
+            const mapEl = document.getElementById('map');
+            const windyEl = document.getElementById('windy-container');
+            const wallEl = document.getElementById('video-wall');
+            
+            const panels = [
+                document.getElementById('layer-control-box'),
+                document.getElementById('weather-box'),
+                document.getElementById('info-box')
+            ];
+
+            if(mode === 'map') {
+                btnMap.classList.add('active');
+                btnVideo.classList.remove('active');
+                wallEl.style.display = 'none';
+                
+                const selectedBase = document.querySelector('input[name="basemap"]:checked').value;
+                if(selectedBase.startsWith('windy')) {
+                    windyEl.style.display = 'block';
+                } else {
+                    mapEl.style.display = 'block';
+                }
+                
+                panels.forEach(p => p.style.display = 'block');
+                if(selectedBase.startsWith('windy')) document.getElementById('info-box').style.display = 'none';
+                
+                setTimeout(() => map.invalidateSize(), 100);
+            } else {
+                btnVideo.classList.add('active');
+                btnMap.classList.remove('active');
+                mapEl.style.display = 'none';
+                windyEl.style.display = 'none';
+                panels.forEach(p => p.style.display = 'none');
+                
+                wallEl.style.display = 'grid';
+                renderVideoWall(); 
+            }
+        }
+
+        function renderVideoWall() {
+            const wall = document.getElementById('video-wall');
+            wall.innerHTML = '';
+            poiData.livevideo.forEach(item => {
+                const box = document.createElement('div');
+                box.className = 'video-box';
+                
+                // 🌟 修改：在 iframe 標籤內加上 scrolling="no"，雙重鎖死滾動條
+                if(item.url) {
+                    box.innerHTML = `<iframe src="${item.url}" scrolling="no" allowfullscreen></iframe>`;
+                } else {
+                    box.innerHTML = `<div style='font-size:2rem; margin-bottom:5px; color:#555;'>📹</div><div style='color:#aaa;'>${item.name}</div><span style='font-size:0.75rem; color:#444;'>訊號載入中...</span>`;
+                }
+                
+                const title = document.createElement('div');
+                title.className = 'video-title';
+                title.innerText = `🖥️ ${item.name}`;
+                box.appendChild(title);
+                wall.appendChild(box);
+            });
+        }
+
+        // === 6. 底圖與 Windy 切換監聽 ===
+        document.querySelectorAll('input[name="basemap"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const mapEl = document.getElementById('map');
+                const windyEl = document.getElementById('windy-container');
+                const infoBox = document.getElementById('info-box');
+
+                map.removeLayer(emapLayer); map.removeLayer(satLayer); map.removeLayer(hybridLayer);
+                
+                if (this.value.startsWith('windy')) {
+                    mapEl.style.display = 'none';
+                    windyEl.style.display = 'block';
+                    infoBox.style.display = 'none'; 
+
+                    const overlayType = (this.value === 'windy-wind') ? 'wind' : 'temp';
+                    windyEl.src = `https://embed.windy.com/embed2.html?lat=22.7523&lon=121.1528&zoom=11&level=surface&overlay=${overlayType}&menu=&message=true&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=`;
+                } else {
+                    windyEl.style.display = 'none';
+                    mapEl.style.display = 'block';
+                    infoBox.style.display = 'block';
+
+                    if (this.value === 'emaps') emapLayer.addTo(map);
+                    if (this.value === 'sat') satLayer.addTo(map);
+                    if (this.value === 'hybrid') hybridLayer.addTo(map);
+                    
+                    setTimeout(() => map.invalidateSize(), 100);
+                }
+            });
+        });
+
+        // === 7. 天氣 API 連接（透過 Google Apps Script 代理，前端不含任何金鑰）===
+        async function fetchTaitungWeather() {
+            if (WEATHER_PROXY_URL.includes("請貼上")) {
+                setDummyWeather();
+                return;
+            }
+            try {
+                const res = await fetch(WEATHER_PROXY_URL); const data = await res.json();
+                if (data.success === true || data.success === "true") {
+                    const temp = data.temp;
+                    const hum = data.hum;
+                    const wind = data.wind;
+                    const rain = data.rain;
+                    const uvi = data.uvi;
+
+                    document.getElementById('wt-temp').innerText = (temp && temp !== -99) ? `${temp}°C` : '--°C';
+                    document.getElementById('wt-hum').innerText = (hum && hum !== -99) ? `${hum}%` : '--%';
+                    document.getElementById('wt-wind').innerText = (wind && wind !== -99) ? `${wind} m/s` : '-- m/s';
+                    document.getElementById('wt-rain').innerText = (rain && rain !== -99 && rain >= 0) ? `${rain} mm` : '0.0 mm';
+                    document.getElementById('wt-uvi').innerText = (uvi && uvi !== -99) ? uvi : '--';
+                    
+					// 新增：更新時間顯示
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('zh-TW', { hour12: false });
+                    document.getElementById('wt-update-time').innerText = `最後更新時間：${timeStr}`;
+					
+					applyWeatherColors(temp, uvi);
+                } else {
+                    setDummyWeather();
+                }
+            } catch (err) {
+                setDummyWeather();
+            }
+        }
+
+        function setDummyWeather() {
+            document.getElementById('wt-temp').innerText = "28.5°C";
+            document.getElementById('wt-hum').innerText = "75%";
+            document.getElementById('wt-wind').innerText = "2.8 m/s";
+            document.getElementById('wt-rain').innerText = "0.0 mm";
+            document.getElementById('wt-uvi').innerText = "5 (中量)";
+            applyWeatherColors(28.5, 5);
+        }
+
+        function applyWeatherColors(temp, uvi) {
+            const tEl = document.getElementById('wt-temp');
+            const uEl = document.getElementById('wt-uvi');
+            tEl.style.color = (temp > 30) ? '#ff4d6d' : (temp < 20) ? '#00b4d8' : '#2a9d8f';
+            uEl.style.color = (uvi >= 6) ? '#e63946' : (uvi >= 3) ? '#f77f00' : '#2a9d8f';
+        }
+
+        // === 8. 滑鼠動態座標與比例尺換算 ===
+        let currentSystem = 'WGS84';
+        function toggleCoordSystem() {
+            const btn = document.querySelector('.coord-toggle-btn');
+            if (currentSystem === 'WGS84') {
+                currentSystem = 'TWD97'; btn.innerText = '切換 WGS84'; document.getElementById('coord-label').innerText = 'TWD97:';
+            } else {
+                currentSystem = 'WGS84'; btn.innerText = '切換 TWD97'; document.getElementById('coord-label').innerText = 'WGS84:';
+            }
+        }
+
+        map.on('mousemove', function(e) {
+            const lat = e.latlng.lat; const lng = e.latlng.lng;
+            if (currentSystem === 'WGS84') {
+                document.getElementById('coord-value').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            } else {
+                if (typeof proj4 !== 'undefined') {
+                    const twd97 = proj4("WGS84", "EPSG:3826", [lng, lat]);
+                    document.getElementById('coord-value').innerText = `X: ${twd97[0].toFixed(1)}, Y: ${twd97[1].toFixed(1)}`;
+                } else {
+                    document.getElementById('coord-value').innerText = `未加載成功`;
+                }
+            }
+        });
+
+        // 監聽地圖縮放，動態計算標準分數比例尺（如 1/500）
+        map.on('zoomend moveend', function() {
+            const center = map.getCenter(); const zoom = map.getZoom();
+            // 計算每像素代表的公尺數
+            const metersPerPixel = 40075016 * Math.cos(center.lat * Math.PI / 180) / Math.pow(2, zoom + 8);
+            
+            // 依據 OGC 國際標準網頁螢幕解析度（1像素 = 0.28毫米 = 0.00028公尺）換算成分母
+            const scaleDenominator = metersPerPixel / 0.00028;
+            
+            // 對分母做美化修約整數
+            let displayScale;
+            if (scaleDenominator > 2000) {
+                displayScale = Math.round(scaleDenominator / 500) * 500;
+            } else if (scaleDenominator > 500) {
+                displayScale = Math.round(scaleDenominator / 100) * 100;
+            } else {
+                displayScale = Math.round(scaleDenominator / 50) * 50;
+            }
+            
+            document.getElementById('custom-scale').innerText = `比例尺: 1/${displayScale}`;
+        });
+
+        const checkboxMapping = {
+            'lyr-exhibit': markerGroups.exhibit, 'lyr-bus': markerGroups.bus, 'lyr-toilet': markerGroups.toilet,
+            'lyr-water': markerGroups.water, 'lyr-aed': markerGroups.aed, 'lyr-livevideo': markerGroups.livevideo
+        };
+        Object.keys(checkboxMapping).forEach(id => {
+            document.getElementById(id).addEventListener('change', function() {
+                if (this.checked) checkboxMapping[id].addTo(map);
+                else map.removeLayer(checkboxMapping[id]);
+            });
+			
+			// 🌟 新增：全開功能邏輯
+			document.getElementById('lyr-all-on').addEventListener('click', function(e) {
+				e.stopPropagation(); // 防止點擊時干擾圖層選單的展開/收合
+				Object.keys(checkboxMapping).forEach(id => {
+					const cb = document.getElementById(id);
+					if (cb && !cb.checked) {
+						cb.checked = true;
+						checkboxMapping[id].addTo(map); // 打勾並顯示在地圖上
+					}
+				});
+			});
+
+			// 🌟 新增：全關功能邏輯
+			document.getElementById('lyr-all-off').addEventListener('click', function(e) {
+				e.stopPropagation(); // 防止點擊時干擾圖層選單的展開/收合
+				Object.keys(checkboxMapping).forEach(id => {
+					const cb = document.getElementById(id);
+					if (cb && cb.checked) {
+						cb.checked = false;
+						map.removeLayer(checkboxMapping[id]); // 取消打勾並從地圖移除
+					}
+				});
+			});
+        });
+
+		// 🌟 新增：工作小組視窗開關與渲染邏輯
+			const groupModal = document.getElementById('group-modal');
+			
+			// 點擊膠囊按鈕打開視窗
+			document.getElementById('btn-working-group').addEventListener('click', function() {
+				const tbody = document.getElementById('group-table-body');
+				tbody.innerHTML = ''; // 清空舊資料
+				
+				let itemIndex = 0; // 🌟 用來精準計算常規資料列的單雙數交錯底色
+				
+				// 撈取 poiData.workingGroup 內的資料並智慧繪製
+				poiData.workingGroup.forEach((item) => {
+					const row = document.createElement('tr');
+					
+					// 1. 如果偵測到是【空行標記】
+					if (item.type === 'spacer') {
+						row.innerHTML = `<td colspan="4" style="height: 20px; border: none; background: transparent;"></td>`;
+						tbody.appendChild(row);
+						return; // 跳過本次，繼續下一輪
+					}
+					
+					// 2. 如果偵測到是【分類大標題】
+					if (item.type === 'section') {
+						row.style.background = '#eaf2f8'; // 給予大標題淡淡的質感染藍色背景
+						row.innerHTML = `
+							<td colspan="4" style="padding: 10px 12px; font-weight: bold; color: var(--dark-blue); border-bottom: 2px solid #b9cfe3; font-size: 0.95rem;">
+								${item.title}
+							</td>
+						`;
+						tbody.appendChild(row);
+						return; // 跳過本次，繼續下一輪
+					}
+					
+					// 3. 否則，渲染【常規聯絡資料列】
+					row.style.background = itemIndex % 2 === 0 ? '#ffffff' : '#f9f9f9';
+					row.innerHTML = `
+						<td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #333; padding-left: 15px;">${item.group}</td>
+						<td style="padding: 10px; border-bottom: 1px solid #eee; color: #555;">${item.unit}</td>
+						<td style="padding: 10px; border-bottom: 1px solid #eee; color: #555;">${item.contact}</td>
+						<td style="padding: 10px; border-bottom: 1px solid #eee; color: var(--primary-blue); font-weight: 500;">${item.phone}</td>
+					`;
+					tbody.appendChild(row);
+					itemIndex++; // 只有真正的資料列才累加，確保交錯底色完美不破圖
+				});
+				
+				groupModal.style.display = 'flex'; // 顯示視窗
+			});
+
+			// 點擊 X 關閉視窗
+			document.getElementById('close-group-modal').addEventListener('click', function() {
+				groupModal.style.display = 'none';
+			});
+
+			// 點擊視窗外圍黑色區域也能自動關閉
+			groupModal.addEventListener('click', function(e) {
+				if (e.target === groupModal) groupModal.style.display = 'none';
+			});
+
+        // 初始化啟動
+        renderMapMarkers();
+        fetchTaitungWeather();
+		// 🌟 新增：每 1 分鐘（1 * 60 * 1000 毫秒）自動抓取一次最新天氣
+		setInterval(fetchTaitungWeather, 1 * 60 * 1000);
+        setTimeout(() => map.fire('zoomend'), 100);
+    </script>
+</body>
+</html>
