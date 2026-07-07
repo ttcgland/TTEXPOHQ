@@ -821,20 +821,29 @@
 			});
             poiData.bus.forEach(d => {
                 L.marker([d.lat, d.lng], {icon: createCuteIcon("🚌", "#219ebc")})
-                 .bindPopup(`<b>🚌：</b> ${d.name}`).addTo(markerGroups.bus);
+                 .bindPopup(`
+					<b>🚌：</b> ${d.name}
+					${makeNavLink(d.lat, d.lng)}
+					`).addTo(markerGroups.bus);
             });
             poiData.toilet.forEach(d => {
 				L.marker([d.lat, d.lng], {icon: createCuteIcon("🚹", "#ffffff")})
-				 .bindPopup(`<b>🚹 公廁:</b> ${d.name}`)
+				 .bindPopup(`<b>🚹 公廁:</b> ${d.name}
+				 ${makeNavLink(d.lat, d.lng)}
+				 `)
 				 .addTo(markerGroups.toilet);
 			});
             poiData.water.forEach(d => {
                 L.marker([d.lat, d.lng], {icon: createCuteIcon("💧", "#ff7b00")})
-                 .bindPopup(`<b>💧：</b> ${d.name}`).addTo(markerGroups.water);
+                 .bindPopup(`<b>💧：</b> ${d.name}
+				 ${makeNavLink(d.lat, d.lng)}
+				 `).addTo(markerGroups.water);
             });
             poiData.aed.forEach(d => {
                 L.marker([d.lat, d.lng], {icon: createCuteIcon("❤️", "#2bc48a")})
-                 .bindPopup(`<b>❤️ AED：</b> ${d.name}`).addTo(markerGroups.aed);
+                 .bindPopup(`<b>❤️ AED：</b> ${d.name}
+				 ${makeNavLink(d.lat, d.lng)}
+				 `).addTo(markerGroups.aed);
             });
 			poiData.livevideo.forEach(d => {
                 // 核心邏輯：將 iframe 的縮放基準點移到左上角 (0 0)，並將 left 調整為微負值
