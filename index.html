@@ -542,6 +542,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 
     <script>
+		function updateLayerControlTop() {
+		    const header = document.querySelector('.header-container');
+		    const layerBox = document.getElementById('layer-control-box');
+		    if (!header || !layerBox) return;
+		    const headerBottom = header.getBoundingClientRect().bottom;
+		    layerBox.style.setProperty('--layer-top', (headerBottom + 8) + 'px');
+		}
+		window.addEventListener('load', updateLayerControlTop);
+		window.addEventListener('resize', updateLayerControlTop);
+		window.addEventListener('orientationchange', updateLayerControlTop);
+		updateLayerControlTop();
+		
         // ==========================================
         // 1. 天氣資料代理設定區（不含任何金鑰）
         // ==========================================
