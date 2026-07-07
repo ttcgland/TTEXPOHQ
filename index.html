@@ -173,13 +173,14 @@
         /* --- 右上角：圖層切換 --- */
         .custom-layer-control {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: 75px !important;
+			bottom: auto !important;
+            right: 10px !important;
             z-index: 1000;
             background: var(--white);
             padding: 10px 12px;
             border-radius: 8px;
-            box-shadow: 0 4px 6px var(--shadow);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
             border-top: 4px solid var(--primary-blue);
             transition: all 0.3s ease;
             max-width: 80px;
@@ -190,7 +191,7 @@
 
         .custom-layer-control:hover {
             max-width: 300px;
-            max-height: 520px;
+            max-height: calc(100vh - 110px) !important;
             overflow-y: auto;
         }
 
