@@ -191,8 +191,8 @@
 
         .custom-layer-control:hover {
             max-width: 300px;
-            max-height: calc(100vh - 110px) !important;
-            overflow-y: auto;
+            max-height: var(--layer-max-height, 450px) !important;
+            overflow-y: auto !important;
         }
 
         .layer-title {
@@ -542,12 +542,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 
     <script>
+	
 		function updateLayerControlTop() {
-		    const header = document.querySelector('.header-container');
-		    const layerBox = document.getElementById('layer-control-box');
-		    if (!header || !layerBox) return;
-		    const headerBottom = header.getBoundingClientRect().bottom;
-		    layerBox.style.setProperty('--layer-top', (headerBottom + 8) + 'px');
+			const header = document.querySelector('.header-container');
+			const layerBox = document.getElementById('layer-control-box');
+			if (!header || !layerBox) return;
+			const headerBottom = header.getBoundingClientRect().bottom;
+			layerBox.style.setProperty('--layer-top', (headerBottom + 8) + 'px');
 		}
 		window.addEventListener('load', updateLayerControlTop);
 		window.addEventListener('resize', updateLayerControlTop);
@@ -582,6 +583,22 @@
             }).join(' / ');
         }
 		
+		// 🌟 新增：產生跳轉 Google Maps 導航的按鈕 HTML
+		// 用 Google Maps 官方支援的通用網址協定 (Universal Cross-Platform URL)，
+		// 手機上點擊會自動打開已安裝的 Google Maps App，桌機則開啟網頁版，
+		// 兩邊都會直接帶入目的地座標並開始規劃路線，不需要額外判斷平台。
+        function makeNavLink(lat, lng) {
+            if (lat === undefined || lng === undefined) return '';
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+            return `
+                <div style="margin-top: 8px;">
+                    <a href="${url}" target="_blank" rel="noopener noreferrer"
+                       style="display: inline-flex; align-items: center; gap: 4px; background: var(--primary-blue); color: #fff; padding: 5px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; text-decoration: none;">
+                        🧭 Google Maps 導航
+                    </a>
+                </div>`;
+        }
+		
         // === 2. 安全定義 TWD97 座標系統 ===
         if (typeof proj4 !== 'undefined') {
             proj4.defs("EPSG:3826", "+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
@@ -599,30 +616,30 @@
 		const poiData = {
 			// 🎪 展場：每個物件包含 name, lat, lng, unit, contact, phone
 			exhibit: [
-				{ name: "緊急應變中心(救護站+輔具租借)", lat: 22.75086, lng: 121.14494, unit: "各單位", contact: "輪值人員", phone: "326-642 / 334-502", icon: "🏛️", color: "#EA0000", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
-				{ name: "A1-活的學校", lat: 22.75233, lng: 121.14492, unit: "文化處", contact: "潘以家", phone: "089-320-378#502", icon: "A1", color: "#0507a8", 飲水機:"❌" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
-				{ name: "A2-未來超市", lat: 22.75394, lng: 121.14597, unit: "農業處", contact: "趙淯存", phone: "089-346-781", icon: "A2", color: "#0507a8", 飲水機:"" ,廁所:"", AED:"", 哺乳室:"" },
-				{ name: "A3-記憶提取所", lat: 22.75292, lng: 121.14677, unit: "國計處", contact: "林宛靚、蔡彥安", phone: "089-343-582", icon: "A3", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
-				{ name: "A4-微光流金戲院", lat: 22.75327, lng: 121.14683, unit: "國計處", contact: "陳又瑞", phone: "089-343-582", icon: "A4", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
-				{ name: "A5-夢想東升Walk in熱氣球", lat: 22.75115, lng: 121.14816, unit: "觀光處", contact: "林穎潔", phone: "089-343-879", icon: "A5", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
-				{ name: "A6-未來人孵化器", lat: 22.74787, lng: 121.14444, unit: "教育處", contact: "侯乃菁", phone: "089-322-002#1307", icon: "A6", color: "#0507a8", 飲水機:"✅" ,廁所:"✅", AED:"❌", 哺乳室:"✅" },
-				{ name: "A7-台東線", lat: 22.75192, lng: 121.14709, unit: "行政處", contact: "彭淳芳", phone: "089-342-890", icon: "A7", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
-				{ name: "A8-台東線(夜間光雕)", lat: 22.75177, lng: 121.14728, unit: "文化處", contact: "任蘭欣", phone: "089-320-378#505", icon: "A8", color: "#0507a8", 飲水機:"" ,廁所:"", AED:"", 哺乳室:"" },
-				{ name: "A9-烤什麼東東", lat: 22.75305, lng: 121.14438, unit: "社會處", contact: "林維倫", phone: "089-342-492#270", icon: "A9", color: "#0507a8", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
-				{ name: "B1-就藝會", lat: 22.76252, lng: 121.14288, unit: "文化處", contact: "巴干 美吉", phone: "089-342-405#511", icon: "B1", color: "#47ad42", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
-				{ name: "C1-泛太平洋國際駐村交流展", lat: 22.76471, lng: 121.15003, unit: "文化處", contact: "李承翰", phone: "089-342-405#511", icon: "C1", color: "#295325", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
-				{ name: "C2-台東聲音藝術節", lat: 22.76432, lng: 121.14981, unit: "文化處", contact: "金芝", phone: "089-342-405#511", icon: "C2", color: "#295325", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
-				{ name: "C3-台東工藝展", lat: 22.76416, lng: 121.15011, unit: "文化處", contact: "王怡雯", phone: "089-320-378#506", icon: "C3", color: "#295325", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
-				{ name: "D1-東日晒桑", lat: 22.75875, lng: 121.15184, unit: "文化處", contact: "鍾雅文", phone: "089-320-378#204", icon: "D1", color: "#009cef", 飲水機:"❌" ,廁所:"✅", AED:"❌", 哺乳室:"❌" },
-				{ name: "D2-藝起來我家", lat: 22.75908, lng: 121.15177, unit: "文化處", contact: "王蕙筠", phone: "089-350-382", icon: "D2", color: "#009cef", 飲水機:"❌" ,廁所:"✅", AED:"❌", 哺乳室:"❌" },
-				{ name: "E1-凹!你是有的", lat: 22.74838, lng: 121.15276, unit: "原民處", contact: "林江琪", phone: "089-320-1121#202", icon: "E1", color: "#00e5ef", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
-				{ name: "E2-永續島進行事", lat: 22.74726, lng: 121.15424, unit: "環保局", contact: "許筑媛", phone: "089-221-9991#502", icon: "E2", color: "#00e5ef", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
-				{ name: "F1-潮界帶", lat: 22.75526, lng: 121.15134, unit: "民政處", contact: "陳怡妘", phone: "089-352-674", icon: "F1", color: "#9d6c6c", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
-				{ name: "G1-共編台東", lat: 22.75629, lng: 121.14532, unit: "文化處", contact: "王嬿晴", phone: "089-320-378#513", icon: "G1", color: "#ff8c00", 飲水機:"✅" ,廁所:"✅", AED:"", 哺乳室:"" },
-				{ name: "G2-台東藝穗節回顧展", lat: 22.75638, lng: 121.14473, unit: "文化處", contact: "賴韋丞", phone: "089-350-381", icon: "G2", color: "#ff8c00", 飲水機:"❌" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
-				{ name: "G3-台東探索館", lat: 22.75677, lng: 121.14539, unit: "文化處", contact: "劉俊璋", phone: "089-320-378#316", icon: "G3", color: "#ff8c00", 飲水機:"" ,廁所:"", AED:"", 哺乳室:"" },
-				{ name: "H1-紅土之上棒球特展", lat: 22.78914, lng: 121.12848, unit: "教育處", contact: "張誌顯", phone: "089-322-002#1607", icon: "H1", color: "#794513", 飲水機:"❌" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
-				{ name: "H2-台東慢經濟指南-島島生活提案所", lat: 22.76233, lng: 121.15712, unit: "文化處", contact: "潘以家", phone: "089-320-378#502", icon: "H2", color: "#794513", 飲水機:"" ,廁所:"", AED:"", 哺乳室:"" }
+				{ name: "緊急應變中心(救護站+輔具租借)", lat: 22.75086, lng: 121.14494, unit: "各單位", icon: "🏛️", color: "#EA0000", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"✅" },
+				{ name: "A1-活的學校", lat: 22.75233, lng: 121.14492, unit: "文化處", icon: "A1", color: "#0507a8", 飲水機:"❌" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "A2-未來超市", lat: 22.75394, lng: 121.14597, unit: "農業處", icon: "A2", color: "#0507a8", 飲水機:"❌" ,廁所:"✅", AED:"❌", 哺乳室:"❌" },
+				{ name: "A3-記憶提取所", lat: 22.75292, lng: 121.14677, unit: "國計處", icon: "A3", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
+				{ name: "A4-微光流金戲院", lat: 22.75327, lng: 121.14683, unit: "國計處", icon: "A4", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
+				{ name: "A5-夢想東升Walk in熱氣球", lat: 22.75101, lng: 121.14839, unit: "觀光處", icon: "A5", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
+				{ name: "A6-未來人孵化器", lat: 22.74787, lng: 121.14444, unit: "教育處", icon: "A6", color: "#0507a8", 飲水機:"✅" ,廁所:"✅", AED:"❌", 哺乳室:"✅" },
+				{ name: "A7-台東線", lat: 22.75192, lng: 121.14709, unit: "行政處", icon: "A7", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"❌", 哺乳室:"❌" },
+				{ name: "A8-台東線(夜間光雕)", lat: 22.75177, lng: 121.14728, unit: "文化處", icon: "A8", color: "#0507a8", 飲水機:"❌" ,廁所:"❌", AED:"✅", 哺乳室:"✅" },
+				{ name: "A9-烤什麼東東", lat: 22.75305, lng: 121.14438, unit: "社會處", icon: "A9", color: "#0507a8", 飲水機:"❌" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "B1-就藝會", lat: 22.76252, lng: 121.14288, unit: "文化處", icon: "B1", color: "#47ad42", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "C1-泛太平洋國際駐村交流展", lat: 22.76471, lng: 121.15003, unit: "文化處", icon: "C1", color: "#295325", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"✅" },
+				{ name: "C2-台東聲音藝術節", lat: 22.76432, lng: 121.14981, unit: "文化處", icon: "C2", color: "#295325", 飲水機:"❌" ,廁所:"✅", AED:"❌", 哺乳室:"❌" },
+				{ name: "C3-台東工藝展", lat: 22.76416, lng: 121.15011, unit: "文化處", icon: "C3", color: "#295325", 飲水機:"❌" ,廁所:"✅", AED:"❌", 哺乳室:"❌" },
+				{ name: "D1-東日晒桑", lat: 22.75875, lng: 121.15184, unit: "文化處", icon: "D1", color: "#009cef", 飲水機:"❌" ,廁所:"✅(館外東北側150m處)", AED:"❌", 哺乳室:"❌" },
+				{ name: "D2-藝起來我家", lat: 22.75908, lng: 121.15177, unit: "文化處", icon: "D2", color: "#009cef", 飲水機:"❌" ,廁所:"✅(館外東北側150m處)", AED:"❌", 哺乳室:"❌" },
+				{ name: "E1-凹!你是有的", lat: 22.74838, lng: 121.15276, unit: "原民處", icon: "E1", color: "#00e5ef", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"✅" },
+				{ name: "E2-永續島進行事", lat: 22.74726, lng: 121.15424, unit: "環保局", icon: "E2", color: "#00e5ef", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "F1-潮界帶", lat: 22.75526, lng: 121.15134, unit: "民政處", icon: "F1", color: "#9d6c6c", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"✅(2F)" },
+				{ name: "G1-共編台東", lat: 22.75629, lng: 121.14532, unit: "文化處", icon: "G1", color: "#ff8c00", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"✅" },
+				{ name: "G2-台東藝穗節回顧展", lat: 22.75638, lng: 121.14473, unit: "文化處", icon: "G2", color: "#ff8c00", 飲水機:"✅" ,廁所:"✅", AED:"✅", 哺乳室:"✅" },
+				{ name: "G3-台東探索館", lat: 22.75677, lng: 121.14539, unit: "文化處", icon: "G3", color: "#ff8c00", 飲水機:"❌" ,廁所:"✅", AED:"❌", 哺乳室:"❌" },
+				{ name: "H1-紅土之上棒球特展", lat: 22.78914, lng: 121.12848, unit: "教育處", icon: "H1", color: "#794513", 飲水機:"❌" ,廁所:"✅", AED:"✅", 哺乳室:"❌" },
+				{ name: "H2-台東慢經濟指南-島島生活提案所", lat: 22.76233, lng: 121.15712, unit: "文化處", icon: "H2", color: "#794513", 飲水機:"✅" ,廁所:"✅", AED:"❌", 哺乳室:"❌" }
 			],
 
 			// 🚌 接駁車站牌：每個物件包含 name, lat, lng
@@ -643,32 +660,51 @@
 			// 🚹 公廁：每個物件包含 name, lat, lng
 			toilet: [
 				{ name: "A1-活的學校", lat: 22.75233, lng: 121.14492 },
+				{ name: "A2-未來超市", lat: 22.75394, lng: 121.14597 },
 				{ name: "A6-未來人孵化器", lat: 22.74787, lng: 121.14444 },
 				{ name: "A9-烤什麼東東", lat: 22.75305, lng: 121.14438 },
 				{ name: "B1-就藝會", lat: 22.76252, lng: 121.14288 },
 				{ name: "C1-泛太平洋國際駐村交流展", lat: 22.76471, lng: 121.15003 },
-				{ name: "D1-東日晒桑", lat: 22.75875, lng: 121.15184 },
-				{ name: "D2-藝起來我家", lat: 22.75908, lng: 121.15177 },
+				{ name: "C2-台東聲音藝術節", lat: 22.76432, lng: 121.14981 },
+				{ name: "C3-台東工藝展", lat: 22.76416, lng: 121.15011 },
 				{ name: "E1-凹!你是有的", lat: 22.74838, lng: 121.15276 },
 				{ name: "E2-永續島進行事", lat: 22.74726, lng: 121.15424 },
 				{ name: "F1-潮界帶", lat: 22.75526, lng: 121.15134 },
 				{ name: "G1-共編台東", lat: 22.75629, lng: 121.14532 },
 				{ name: "G2-台東藝穗節回顧展", lat: 22.75638, lng: 121.14473 },
+				{ name: "G3-台東探索館", lat: 22.75677, lng: 121.14539 },
 				{ name: "H1-紅土之上棒球特展", lat: 22.78914, lng: 121.12848},
 				{ name: "H2-台東慢經濟指南-島島生活提案所", lat: 22.76233, lng: 121.15712},
 				{ name: "台東縣體育場", lat: 22.75154, lng: 121.14516},
-				{ name: "樹屋廣場", lat: 22.75380, lng: 121.14621},
+				{ name: "北町", lat: 22.75950, lng: 121.15300},
 				{ name: "社會處", lat: 22.75207, lng: 121.14414},
 				{ name: "警察局台東分局", lat: 22.74935, lng: 121.14438},
 				{ name: "機關車庫旁", lat: 22.75307, lng: 121.14571},
 				{ name: "波浪屋", lat: 22.75300, lng: 121.14726},
-				{ name: "客運總站", lat: 22.75122, lng: 121.14798},
-				{ name: "美術館", lat: 22.76411, lng: 121.15030}
+				{ name: "客運總站", lat: 22.75122, lng: 121.14798}
 			],
 
 			// 💧 飲水機：每個物件包含 name, lat, lng
 			water: [
 				{ name: "A6-未來人孵化器", lat: 22.74787, lng: 121.14444 },
+				{ name: "B1-就藝會", lat: 22.76252, lng: 121.14288 },
+				{ name: "C1-泛太平洋國際駐村交流展", lat: 22.76471, lng: 121.15003 },
+				{ name: "E1-凹!你是有的", lat: 22.74838, lng: 121.15276 },
+				{ name: "E2-永續島進行事", lat: 22.74726, lng: 121.15424 },
+				{ name: "F1-潮界帶", lat: 22.75526, lng: 121.15134 },
+				{ name: "G1-共編台東", lat: 22.75629, lng: 121.14532 },
+				{ name: "G2-台東藝穗節回顧展", lat: 22.75638, lng: 121.14473 },
+				{ name: "H2-台東慢經濟指南-島島生活提案所", lat: 22.76233, lng: 121.15712 },
+				{ name: "台東縣體育場", lat: 22.75086, lng: 121.14494},
+				{ name: "社會處", lat: 22.75207, lng: 121.14414},
+				{ name: "警察局台東分局", lat: 22.74935, lng: 121.14438}	
+			],
+
+			// ❤️ AED：每個物件包含 name, lat, lng
+			aed: [
+				{ name: "緊急應變中心(救護站+輔具租借)", lat: 22.75086, lng: 121.14494 },
+				{ name: "A1-活的學校", lat: 22.75233, lng: 121.14492 },
+				{ name: "A8-台東線(夜間光雕)", lat: 22.75177, lng: 121.14728 },
 				{ name: "A9-烤什麼東東", lat: 22.75305, lng: 121.14438 },
 				{ name: "B1-就藝會", lat: 22.76252, lng: 121.14288 },
 				{ name: "C1-泛太平洋國際駐村交流展", lat: 22.76471, lng: 121.15003 },
@@ -676,21 +712,8 @@
 				{ name: "E2-永續島進行事", lat: 22.74726, lng: 121.15424 },
 				{ name: "F1-潮界帶", lat: 22.75526, lng: 121.15134 },
 				{ name: "G1-共編台東", lat: 22.75629, lng: 121.14532 },
-				{ name: "台東縣體育場", lat: 22.75086, lng: 121.14494},
-				{ name: "社會處", lat: 22.75207, lng: 121.14414},
-				{ name: "警察局台東分局", lat: 22.74935, lng: 121.14438}			
-			],
-
-			// ❤️ AED：每個物件包含 name, lat, lng
-			aed: [
-				{ name: "A1-活的學校", lat: 22.75233, lng: 121.14492 },
-				{ name: "A9-烤什麼東東", lat: 22.75305, lng: 121.14438 },
-				{ name: "B1-就藝會", lat: 22.76252, lng: 121.14288 },
-				{ name: "C1-泛太平洋國際駐村交流展", lat: 22.76471, lng: 121.15003 },
-				{ name: "E1-凹!你是有的", lat: 22.74838, lng: 121.15276 },
-				{ name: "E2-永續島進行事", lat: 22.74726, lng: 121.15424 },
-				{ name: "F1-潮界帶", lat: 22.75526, lng: 121.15134 },
-				{ name: "G2-台東藝穗節回顧展", lat: 22.75638, lng: 121.14473 }
+				{ name: "G2-台東藝穗節回顧展", lat: 22.75638, lng: 121.14473 },
+				{ name: "H1-紅土之上棒球特展", lat: 22.78914, lng: 121.12848}
 			],
 
 			// 📹 即時影像點：每個物件包含 name, lat, lng, url
@@ -793,6 +816,7 @@
                         <div>❤️ＡＥＤ: <b>${aed}</b></div>
                         <div>🍼哺乳室: <b>${room}</b></div>
                     </div>
+					${makeNavLink(d.lat, d.lng)}
 					`).addTo(markerGroups.exhibit);
 			});
             poiData.bus.forEach(d => {
@@ -982,39 +1006,14 @@
         // ==========================================
         async function fetchTyphoonData() {
             try {
-                let res, typhoonList = null;
+                let res, typhoonList = [];
                 try {
                     res = await fetch(WEATHER_PROXY_URL + "?type=typhoon");
                     typhoonList = await res.json(); // 預期後端升級後會回傳一個【陣列】
+					if (!Array.isArray(typhoonList)) typhoonList = []; // 格式異常也視為「目前無颱風」
                 } catch(e) {
-                    typhoonList = null;
-                }
-
-                // 🎯 防呆機制：如果 API 失敗、或目前沒有任何真實颱風，就啟用【模擬雙颱共舞測試陣列】
-                if (!typhoonList || !Array.isArray(typhoonList) || typhoonList.length === 0) {
-                    typhoonList = [
-                        {
-                            typhoon_name: "模擬強烈颱風 (Demo A)",
-                            analysis_data: [
-                                { time: "07/02 08:00", lat: 20.2, lng: 124.5, radius7: 250, radius10: 80, pressure: 940 },
-                                { time: "07/03 08:00", lat: 22.0, lng: 121.8, radius7: 280, radius10: 100, pressure: 925 }
-                            ],
-                            forecast_data: [
-                                { time: "07/04 08:00", lat: 23.8, lng: 119.0, radius7: 250, radius10: 80 },
-                                { time: "07/05 08:00", lat: 25.1, lng: 117.5, radius7: 200, radius10: 50 }
-                            ]
-                        },
-                        {
-                            typhoon_name: "模擬輕度颱風 (Demo B)",
-                            analysis_data: [
-                                { time: "07/02 12:00", lat: 24.5, lng: 128.0, radius7: 100, radius10: 0, pressure: 985 },
-                                { time: "07/03 06:00", lat: 25.5, lng: 126.2, radius7: 120, radius10: 0, pressure: 980 }
-                            ],
-                            forecast_data: [
-                                { time: "07/04 06:00", lat: 26.8, lng: 124.0, radius7: 120, radius10: 0 }
-                            ]
-                        }
-                    ];
+					console.error("颱風資料抓取失敗:", e);
+                    typhoonList = null;// 抓取失敗時視為「目前無颱風」，畫面保持乾淨，不畫出任何颱風
                 }
 
                 // 先清空地圖上的舊颱風線條與圖示
